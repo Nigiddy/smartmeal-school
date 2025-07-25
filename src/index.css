@@ -6,30 +6,30 @@
 
 @layer base {
   :root {
-    /* Base colors */
-    --background: 0 0% 100%;
-    --foreground: 220 13% 18%;
+    /* Base colors - Mobile-first dark theme */
+    --background: 220 13% 9%;
+    --foreground: 0 0% 95%;
 
     /* Card and surface colors */
-    --card: 0 0% 100%;
-    --card-foreground: 220 13% 18%;
+    --card: 220 13% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 18%;
+    --popover: 220 13% 12%;
+    --popover-foreground: 0 0% 95%;
 
-    /* SmartMeal brand colors */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 217 91% 70%;
+    /* SmartMeal brand colors - Mobile-first vibrant */
+    --primary: 217 91% 65%;
+    --primary-foreground: 220 13% 9%;
+    --primary-glow: 217 91% 75%;
 
     --secondary: 142 76% 36%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 13% 14%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 38 92% 50%;
-    --accent-foreground: 220 13% 18%;
+    --accent: 38 92% 55%;
+    --accent-foreground: 220 13% 9%;
 
     /* Status colors */
     --success: 142 76% 36%;
@@ -42,9 +42,9 @@
     --destructive-foreground: 0 0% 100%;
 
     /* Form elements */
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 60%;
+    --border: 220 13% 18%;
+    --input: 220 13% 18%;
+    --ring: 217 91% 65%;
 
     /* Design system tokens */
     --radius: 0.75rem;
@@ -59,9 +59,10 @@
     --shadow-medium: 0 8px 30px -5px hsl(220 13% 18% / 0.15);
     --shadow-card: 0 4px 20px -4px hsl(217 91% 60% / 0.15);
     
-    /* Animations */
+    /* Animations - Enhanced for mobile */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-scale: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     --radius: 0.75rem;
 
@@ -82,10 +83,10 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
-  .dark {
-    /* Base colors for dark mode */
-    --background: 220 13% 9%;
-    --foreground: 0 0% 95%;
+  .light {
+    /* Light mode overrides */
+    --background: 0 0% 100%;
+    --foreground: 220 13% 18%;
 
     /* Card and surface colors */
     --card: 220 13% 12%;
@@ -141,6 +142,55 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
+  }
+}
+
+@layer components {
+  /* Mobile-first animations */
+  .animate-scale-in {
+    @apply transform transition-transform duration-200 hover:scale-105 active:scale-95;
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+  
+  .floating-dock {
+    @apply fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50;
+    @apply bg-card/80 backdrop-blur-xl border border-border;
+    @apply rounded-full px-6 py-3 shadow-lg;
+  }
+  
+  .dock-icon {
+    @apply w-12 h-12 flex items-center justify-center rounded-full;
+    @apply bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground;
+    @apply transform transition-all duration-200 hover:scale-110 active:scale-95;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
