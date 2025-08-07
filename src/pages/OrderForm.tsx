@@ -17,8 +17,6 @@ const OrderForm = () => {
   
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
-    studentId: "", 
-    class: "",
     phone: "",
     notes: ""
   });
@@ -45,10 +43,10 @@ const OrderForm = () => {
 
   const proceedToPayment = () => {
     // Validate required fields
-    if (!customerInfo.name || !customerInfo.studentId || !customerInfo.class) {
+    if (!customerInfo.name || !customerInfo.phone) {
       toast({
         title: "Missing information",
-        description: "Please fill in all required fields",
+        description: "Please fill in your name and phone number",
         variant: "destructive"
       });
       return;
@@ -140,7 +138,7 @@ const OrderForm = () => {
         {/* Customer Information */}
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Student Information</CardTitle>
+            <CardTitle>Customer Information</CardTitle>
             <CardDescription>Please provide your details for the order</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -156,30 +154,7 @@ const OrderForm = () => {
                 />
               </div>
               <div>
-                <Label htmlFor="studentId">Student ID *</Label>
-                <Input
-                  id="studentId"
-                  placeholder="e.g., STU2024001"
-                  value={customerInfo.studentId}
-                  onChange={(e) => handleInputChange("studentId", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="class">Class/Grade *</Label>
-                <Input
-                  id="class"
-                  placeholder="e.g., Form 4A"
-                  value={customerInfo.class}
-                  onChange={(e) => handleInputChange("class", e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">Phone Number *</Label>
                 <Input
                   id="phone"
                   placeholder="e.g., 0712345678"

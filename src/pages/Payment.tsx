@@ -5,47 +5,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Smartphone, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Smartphone, CheckCircle, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useMpesaPayment } from "@/hooks/use-mpesa-payment";
+import { apiUtils } from "@/lib/api";
 
 const Payment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { paymentState, initiatePayment, resetPayment, cancelPayment, validatePhoneNumber } = useMpesaPayment();
   
   const orderData = location.state;
   
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [paymentState, setPaymentState] = useState<"form" | "processing" | "success">("form");
-  const [progress, setProgress] = useState(0);
-
-  useEffect(() => {
-    if (paymentState === "processing") {
-      const interval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setPaymentState("success");
-            setTimeout(() => {
-              const orderId = `SM${Date.now().toString().slice(-6)}`;
-              navigate("/confirmation", { 
-                state: { 
-                  ...orderData, 
-                  orderId,
-                  paymentMethod: "M-Pesa",
-                  paymentStatus: "completed"
-                } 
-              });
-            }, 2000);
-            return 100;
-          }
-          return prev + 2;
-        });
-      }, 100);
-
-      return () => clearInterval(interval);
-    }
-  }, [paymentState]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!orderData) {
     return (
@@ -63,22 +37,51 @@ const Payment = () => {
     );
   }
 
-  const handlePayment = () => {
-    if (!phoneNumber || phoneNumber.length < 10) {
+  const handlePayment = async () => {
+    if (!validatePhoneNumber(phoneNumber)) {
       toast({
         title: "Invalid phone number",
-        description: "Please enter a valid phone number",
+        description: "Please enter a valid Kenyan phone number (e.g., 0712345678)",
         variant: "destructive"
       });
       return;
     }
 
-    setPaymentState("processing");
-    toast({
-      title: "Payment initiated",
-      description: "Please check your phone for M-Pesa prompt",
-    });
+    setIsSubmitting(true);
+    
+    try {
+      const orderId = apiUtils.generateOrderId();
+      const description = `SmartMeal Order - ${orderData.customer.name}`;
+      
+      await initiatePayment({
+        phoneNumber,
+        amount: orderData.total,
+        orderId,
+        description
+      });
+    } catch (error) {
+      console.error('Payment error:', error);
+      setIsSubmitting(false);
+    }
   };
+
+  // Handle successful payment
+  useEffect(() => {
+    if (paymentState.status === 'success') {
+      const orderId = apiUtils.generateOrderId();
+      setTimeout(() => {
+        navigate("/confirmation", { 
+          state: { 
+            ...orderData, 
+            orderId,
+            paymentMethod: "M-Pesa",
+            paymentStatus: "completed",
+            transactionId: paymentState.transactionId
+          } 
+        });
+      }, 2000);
+    }
+  }, [paymentState.status, navigate, orderData, paymentState.transactionId]);
 
   return (
     <div className="min-h-screen bg-muted">
@@ -102,7 +105,7 @@ const Payment = () => {
       </div>
 
       <div className="max-w-2xl mx-auto p-4">
-        {paymentState === "form" && (
+        {paymentState.status === "idle" && (
           <div className="space-y-6">
             {/* Order Summary */}
             <Card className="shadow-card">
@@ -172,18 +175,43 @@ const Payment = () => {
 
                 <Button 
                   onClick={handlePayment}
+                  disabled={isSubmitting}
                   className="w-full bg-gradient-success"
                   size="lg"
                 >
-                  <Smartphone className="h-4 w-4 mr-2" />
-                  Pay KSh {orderData.total} with M-Pesa
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Smartphone className="h-4 w-4 mr-2" />
+                  )}
+                  {isSubmitting ? 'Initiating Payment...' : `Pay KSh ${orderData.total} with M-Pesa`}
                 </Button>
               </CardContent>
             </Card>
           </div>
         )}
 
-        {paymentState === "processing" && (
+        {paymentState.status === "initiating" && (
+          <Card className="shadow-card">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Initiating Payment</h2>
+              <p className="text-muted-foreground mb-6">
+                Setting up your M-Pesa payment...
+              </p>
+              <div className="space-y-2">
+                <Progress value={paymentState.progress} className="w-full" />
+                <p className="text-sm text-muted-foreground">
+                  Preparing payment request...
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {paymentState.status === "processing" && (
           <Card className="shadow-card">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -194,27 +222,67 @@ const Payment = () => {
                 Please complete the payment on your phone
               </p>
               <div className="space-y-2">
-                <Progress value={progress} className="w-full" />
+                <Progress value={paymentState.progress} className="w-full" />
                 <p className="text-sm text-muted-foreground">
-                  {progress < 50 ? "Sending payment request..." : 
-                   progress < 80 ? "Waiting for confirmation..." : 
+                  {paymentState.progress < 50 ? "Sending payment request..." : 
+                   paymentState.progress < 80 ? "Waiting for confirmation..." : 
                    "Finalizing payment..."}
                 </p>
+              </div>
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={cancelPayment}
+                  className="text-sm"
+                >
+                  Cancel Payment
+                </Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {paymentState === "success" && (
+        {paymentState.status === "success" && (
           <Card className="shadow-card">
             <CardContent className="p-8 text-center">
               <div className="w-16 h-16 bg-success/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="h-8 w-8 text-success" />
               </div>
               <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
-              <p className="text-muted-foreground">
+              <p className="text-muted-foreground mb-4">
+                Transaction ID: {paymentState.transactionId}
+              </p>
+              <p className="text-sm text-muted-foreground">
                 Redirecting to confirmation page...
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {paymentState.status === "failed" && (
+          <Card className="shadow-card">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 bg-destructive/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Payment Failed</h2>
+              <p className="text-muted-foreground mb-6">
+                {paymentState.error || 'An error occurred during payment'}
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={resetPayment}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+                <Button 
+                  onClick={() => navigate("/menu")}
+                >
+                  Back to Menu
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
