@@ -28,9 +28,9 @@ Database: MySQL
 
 ### Backend Requirements
 - **Node.js** with Express.js
-- **MongoDB/PostgreSQL** for data persistence
+- **MySQL for data persistence
 - **JWT** for authentication
-- **M-Pesa API** integration
+- **M-Pesa Daraja API** integration
 - **WebSocket** for real-time updates
 
 ## 📁 Project Structure
