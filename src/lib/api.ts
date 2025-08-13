@@ -54,26 +54,54 @@ export interface MpesaCallbackData {
   };
 }
 
+export interface MenuItem {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  image?: string;
+  category?: string;
+  isAvailable: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface OrderData {
   id: string;
-  customer: {
-    name: string;
-    phone: string;
-    notes?: string;
-  };
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  totalAmount: number;
+  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'COMPLETED' | 'CANCELLED';
+  paymentStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
+  phoneNumber: string;
+  transactionId?: string;
+  mpesaRequestId?: string;
+  checkoutRequestId?: string;
+  notes?: string;
+  orderItems: OrderItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderItem {
+  id: string;
+  menuItemId: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  menuItem: MenuItem;
+}
+
+export interface CreateOrderRequest {
   items: Array<{
-    id: string;
-    name: string;
-    price: number;
+    menuItemId: string;
     quantity: number;
   }>;
-  total: number;
-  status: 'pending' | 'paid' | 'preparing' | 'ready' | 'completed' | 'cancelled';
-  paymentMethod: 'M-Pesa' | 'Cash';
-  paymentStatus: 'pending' | 'completed' | 'failed';
-  orderTime: string;
-  mpesaRequestId?: string;
-  mpesaCheckoutId?: string;
+  customerName: string;
+  customerPhone: string;
+  phoneNumber: string;
+  notes?: string;
 }
 
 // Custom error class for API errors
@@ -104,8 +132,6 @@ class HttpClient {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          'X-App-Name': config.app.name,
-          'X-App-Version': config.app.version,
           ...options.headers,
         },
       });
@@ -144,275 +170,324 @@ class HttpClient {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
-  async post<T>(endpoint: string, data: any): Promise<T> {
+  async post<T>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T>(endpoint: string, data: any): Promise<T> {
+  async put<T>(endpoint: string, data?: any): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: data ? JSON.stringify(data) : undefined,
     });
   }
 
   async delete<T>(endpoint: string): Promise<T> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
+
+  async patch<T>(endpoint: string, data?: any): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+  }
 }
 
 const httpClient = new HttpClient();
 
-// M-Pesa API Service
+// Menu Service
+export class MenuService {
+  static async getMenuItems(): Promise<MenuItem[]> {
+    try {
+      const response = await httpClient.get<ApiResponse<MenuItem[]>>('/menu');
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to fetch menu', 500);
+    } catch (error) {
+      console.error('Error fetching menu:', error);
+      throw error;
+    }
+  }
+
+  static async getMenuCategories(): Promise<string[]> {
+    try {
+      const response = await httpClient.get<ApiResponse<string[]>>('/menu/categories');
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to fetch categories', 500);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      throw error;
+    }
+  }
+
+  static async getMenuItemById(id: string): Promise<MenuItem> {
+    try {
+      const response = await httpClient.get<ApiResponse<MenuItem>>(`/menu/${id}`);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to fetch menu item', 500);
+    } catch (error) {
+      console.error('Error fetching menu item:', error);
+      throw error;
+    }
+  }
+}
+
+// Order Service
+export class OrdersService {
+  static async createOrder(orderData: CreateOrderRequest): Promise<OrderData> {
+    try {
+      const response = await httpClient.post<ApiResponse<OrderData>>('/orders', orderData);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to create order', 500);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
+  }
+
+  static async getOrders(page: number = 1, limit: number = 20): Promise<{
+    orders: OrderData[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    try {
+      const response = await httpClient.get<ApiResponse<{
+        orders: OrderData[];
+        total: number;
+        page: number;
+        totalPages: number;
+      }>>(`/orders?page=${page}&limit=${limit}`);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to fetch orders', 500);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  }
+
+  static async getOrderById(id: string): Promise<OrderData> {
+    try {
+      const response = await httpClient.get<ApiResponse<OrderData>>(`/orders/${id}`);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to fetch order', 500);
+    } catch (error) {
+      console.error('Error fetching order:', error);
+      throw error;
+    }
+  }
+
+  static async updateOrderStatus(id: string, status: OrderData['status']): Promise<OrderData> {
+    try {
+      const response = await httpClient.patch<ApiResponse<OrderData>>(`/orders/${id}/status`, { status });
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to update order status', 500);
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      throw error;
+    }
+  }
+}
+
+// M-Pesa Service
 export class MpesaService {
-  /**
-   * Initiate STK Push payment
-   */
   static async initiatePayment(
     phoneNumber: string,
     amount: number,
     orderId: string,
     description: string
   ): Promise<MpesaStkPushResponse> {
-    if (!config.mpesa.consumerKey || !config.mpesa.passkey) {
-      throw new ApiError('M-Pesa configuration missing', 500);
+    try {
+      const response = await httpClient.post<ApiResponse<MpesaStkPushResponse>>('/mpesa/stk-push', {
+        phoneNumber,
+        amount,
+        orderId,
+        description
+      });
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to initiate payment', 500);
+    } catch (error) {
+      console.error('Error initiating payment:', error);
+      throw error;
     }
-
-    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3);
-    const password = Buffer.from(
-      `${config.mpesa.shortcode}${config.mpesa.passkey}${timestamp}`
-    ).toString('base64');
-
-    const payload = {
-      BusinessShortCode: config.mpesa.shortcode,
-      Password: password,
-      Timestamp: timestamp,
-      TransactionType: 'CustomerPayBillOnline',
-      Amount: amount,
-      PartyA: phoneNumber,
-      PartyB: config.mpesa.shortcode,
-      PhoneNumber: phoneNumber,
-      CallBackURL: `${config.apiBaseUrl}/mpesa/callback`,
-      AccountReference: orderId,
-      TransactionDesc: description,
-    };
-
-    return httpClient.post<MpesaStkPushResponse>('/mpesa/stkpush', payload);
   }
 
-  /**
-   * Check payment status
-   */
   static async checkPaymentStatus(checkoutRequestId: string): Promise<{
-    status: 'pending' | 'completed' | 'failed';
+    status: 'PENDING' | 'COMPLETED' | 'FAILED';
     transactionId?: string;
-    amount?: number;
+    resultCode?: number;
+    resultDesc?: string;
   }> {
-    return httpClient.get(`/mpesa/status/${checkoutRequestId}`);
-  }
-
-  /**
-   * Process M-Pesa callback
-   */
-  static async processCallback(callbackData: MpesaCallbackData): Promise<void> {
-    return httpClient.post('/mpesa/callback', callbackData);
-  }
-}
-
-// Orders API Service
-export class OrdersService {
-  /**
-   * Create a new order
-   */
-  static async createOrder(orderData: Omit<OrderData, 'id' | 'status' | 'orderTime'>): Promise<OrderData> {
-    return httpClient.post<OrderData>('/orders', orderData);
-  }
-
-  /**
-   * Get order by ID
-   */
-  static async getOrder(orderId: string): Promise<OrderData> {
-    return httpClient.get<OrderData>(`/orders/${orderId}`);
-  }
-
-  /**
-   * Get all orders (admin only)
-   */
-  static async getOrders(filters?: {
-    status?: string;
-    date?: string;
-    limit?: number;
-  }): Promise<OrderData[]> {
-    const params = new URLSearchParams();
-    if (filters?.status) params.append('status', filters.status);
-    if (filters?.date) params.append('date', filters.date);
-    if (filters?.limit) params.append('limit', filters.limit.toString());
-    
-    return httpClient.get<OrderData[]>(`/orders?${params.toString()}`);
-  }
-
-  /**
-   * Update order status
-   */
-  static async updateOrderStatus(
-    orderId: string,
-    status: OrderData['status']
-  ): Promise<OrderData> {
-    return httpClient.put<OrderData>(`/orders/${orderId}/status`, { status });
-  }
-}
-
-// Menu API Service
-export class MenuService {
-  /**
-   * Get all menu items
-   */
-  static async getMenuItems(): Promise<Array<{
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    category: string;
-    available: boolean;
-    image?: string;
-  }>> {
-    return httpClient.get('/menu');
-  }
-
-  /**
-   * Create menu item (admin only)
-   */
-  static async createMenuItem(itemData: {
-    name: string;
-    description: string;
-    price: number;
-    category: string;
-    image?: string;
-  }): Promise<any> {
-    return httpClient.post('/menu', itemData);
-  }
-
-  /**
-   * Update menu item (admin only)
-   */
-  static async updateMenuItem(
-    itemId: string,
-    itemData: Partial<{
-      name: string;
-      description: string;
-      price: number;
-      category: string;
-      available: boolean;
-      image: string;
-    }>
-  ): Promise<any> {
-    return httpClient.put(`/menu/${itemId}`, itemData);
-  }
-
-  /**
-   * Delete menu item (admin only)
-   */
-  static async deleteMenuItem(itemId: string): Promise<void> {
-    return httpClient.delete(`/menu/${itemId}`);
+    try {
+      const response = await httpClient.get<ApiResponse<{
+        status: 'PENDING' | 'COMPLETED' | 'FAILED';
+        transactionId?: string;
+        resultCode?: number;
+        resultDesc?: string;
+      }>>(`/mpesa/status/${checkoutRequestId}`);
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to check payment status', 500);
+    } catch (error) {
+      console.error('Error checking payment status:', error);
+      throw error;
+    }
   }
 }
 
 // Auth Service
 export class AuthService {
-  /**
-   * Admin login
-   */
-  static async login(credentials: {
-    username: string;
-    password: string;
-  }): Promise<{
+  static async login(email: string, password: string): Promise<{
     token: string;
     user: {
       id: string;
-      username: string;
-      role: string;
+      email: string;
+      name: string;
+      role: 'ADMIN' | 'STAFF';
     };
   }> {
-    return httpClient.post('/auth/login', credentials);
+    try {
+      const response = await httpClient.post<ApiResponse<{
+        token: string;
+        user: {
+          id: string;
+          email: string;
+          name: string;
+          role: 'ADMIN' | 'STAFF';
+        };
+      }>>('/auth/login', { email, password });
+      
+      if (response.success && response.data) {
+        // Store token in localStorage
+        localStorage.setItem('authToken', response.data.token);
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Login failed', 500);
+    } catch (error) {
+      console.error('Error during login:', error);
+      throw error;
+    }
   }
 
-  /**
-   * Verify admin token
-   */
-  static async verifyToken(token: string): Promise<{
-    valid: boolean;
-    user?: any;
-  }> {
-    return httpClient.post('/auth/verify', { token });
-  }
-
-  /**
-   * Logout
-   */
   static async logout(): Promise<void> {
-    return httpClient.post('/auth/logout', {});
+    try {
+      await httpClient.post('/auth/logout');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      localStorage.removeItem('authToken');
+    }
+  }
+
+  static async getProfile(): Promise<{
+    id: string;
+    email: string;
+    name: string;
+    role: 'ADMIN' | 'STAFF';
+  }> {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new ApiError('No authentication token', 401);
+      }
+
+      const response = await httpClient.get<ApiResponse<{
+        id: string;
+        email: string;
+        name: string;
+        role: 'ADMIN' | 'STAFF';
+      }>>('/auth/me');
+      
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to fetch profile', 500);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      throw error;
+    }
+  }
+
+  static isAuthenticated(): boolean {
+    return !!localStorage.getItem('authToken');
+  }
+
+  static getToken(): string | null {
+    return localStorage.getItem('authToken');
   }
 }
 
 // Utility functions
 export const apiUtils = {
-  /**
-   * Generate a unique order ID
-   */
-  generateOrderId(): string {
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-    return `SM${timestamp}${random}`;
+  generateOrderId: (): string => {
+    const timestamp = Date.now().toString(36);
+    const random = Math.random().toString(36).substr(2, 5);
+    return `SM${timestamp}${random}`.toUpperCase();
   },
 
-  /**
-   * Format phone number for M-Pesa
-   */
-  formatPhoneNumber(phone: string): string {
-    // Remove all non-digits
-    const cleaned = phone.replace(/\D/g, '');
+  formatPhoneNumber: (phone: string): string => {
+    // Remove all non-digit characters
+    let cleaned = phone.replace(/\D/g, '');
     
-    // If it starts with 0, replace with 254
+    // Handle Kenyan phone numbers
     if (cleaned.startsWith('0')) {
-      return `254${cleaned.slice(1)}`;
-    }
-    
-    // If it starts with +254, remove the +
-    if (cleaned.startsWith('254')) {
-      return cleaned;
-    }
-    
-    // If it's 9 digits, assume it's a Kenyan number
-    if (cleaned.length === 9) {
-      return `254${cleaned}`;
+      cleaned = '254' + cleaned.substring(1);
+    } else if (cleaned.startsWith('254')) {
+      // Already in correct format
+    } else if (cleaned.startsWith('7') || cleaned.startsWith('1')) {
+      cleaned = '254' + cleaned;
     }
     
     return cleaned;
   },
 
-  /**
-   * Validate phone number format
-   */
-  validatePhoneNumber(phone: string): boolean {
-    const formatted = this.formatPhoneNumber(phone);
+  validatePhoneNumber: (phone: string): boolean => {
+    const formatted = apiUtils.formatPhoneNumber(phone);
+    // Kenyan phone number validation: 254 + 7 or 1 + 8 digits
     return /^254[17]\d{8}$/.test(formatted);
   },
 
-  /**
-   * Get environment-specific configuration
-   */
-  getConfig() {
-    return config;
+  formatCurrency: (amount: number): string => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  },
+
+  formatDate: (date: string | Date): string => {
+    return new Intl.DateTimeFormat('en-KE', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(date));
   }
 };
 
-export default {
-  MpesaService,
-  OrdersService,
-  MenuService,
-  AuthService,
-  apiUtils,
-  config
-};
+// Export all services
+export { MenuService, OrdersService, MpesaService, AuthService };

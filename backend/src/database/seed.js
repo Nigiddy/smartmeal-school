@@ -8,159 +8,229 @@ async function main() {
 
   try {
     // Create admin user
-    const adminPassword = await bcrypt.hash('admin123', 12);
+    const hashedPassword = await bcrypt.hash('admin123', 12);
     
-    const admin = await prisma.user.upsert({
+    const adminUser = await prisma.user.upsert({
       where: { email: 'admin@smartmeal.com' },
       update: {},
       create: {
-        name: 'System Administrator',
         email: 'admin@smartmeal.com',
         phone: '254700000000',
-        password: adminPassword,
+        name: 'System Administrator',
         role: 'ADMIN',
+        password: hashedPassword,
         isActive: true
       }
     });
 
-    console.log('✅ Admin user created:', admin.email);
+    console.log('✅ Admin user created:', adminUser.email);
 
-    // Create sample menu items
+    // Create menu categories
+    const categories = [
+      'Main Course',
+      'Snacks',
+      'Beverages',
+      'Desserts',
+      'Breakfast'
+    ];
+
+    // Create menu items
     const menuItems = [
       {
-        name: 'Chicken Biryani',
-        description: 'Aromatic rice dish with tender chicken, spices, and herbs',
-        price: 450.00,
-        category: 'Main Course',
-        image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4a8?w=400',
-        isAvailable: true
-      },
-      {
-        name: 'Beef Burger',
-        description: 'Juicy beef patty with fresh vegetables and special sauce',
-        price: 350.00,
-        category: 'Fast Food',
-        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400',
-        isAvailable: true
-      },
-      {
-        name: 'Vegetable Pizza',
-        description: 'Fresh vegetables on crispy crust with melted cheese',
-        price: 400.00,
-        category: 'Fast Food',
-        image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400',
-        isAvailable: true
-      },
-      {
-        name: 'Grilled Fish',
-        description: 'Fresh fish grilled to perfection with lemon and herbs',
-        price: 550.00,
-        category: 'Main Course',
-        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=400',
-        isAvailable: true
-      },
-      {
-        name: 'Chicken Wings',
-        description: 'Crispy chicken wings with your choice of sauce',
-        price: 300.00,
-        category: 'Appetizer',
-        image: 'https://images.unsplash.com/photo-1567620832904-9bbf4c8c0c8c?w=400',
-        isAvailable: true
-      },
-      {
-        name: 'Caesar Salad',
-        description: 'Fresh lettuce, croutons, parmesan cheese with caesar dressing',
+        name: 'Chicken Rice Bowl',
+        description: 'Grilled chicken with steamed rice and fresh vegetables',
         price: 250.00,
-        category: 'Salad',
-        image: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400',
+        category: 'Main Course',
+        image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=400&fit=crop',
         isAvailable: true
       },
       {
-        name: 'Chocolate Cake',
-        description: 'Rich chocolate cake with chocolate ganache',
-        price: 200.00,
-        category: 'Dessert',
-        image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400',
+        name: 'Beef Stew & Ugali',
+        description: 'Traditional beef stew served with fresh ugali',
+        price: 300.00,
+        category: 'Main Course',
+        image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=400&fit=crop',
         isAvailable: true
       },
       {
-        name: 'French Fries',
-        description: 'Crispy golden fries served with ketchup',
-        price: 150.00,
-        category: 'Side Dish',
-        image: 'https://images.unsplash.com/photo-1573089026218-0c0b0b0b0b0b?w=400',
+        name: 'Fish Fillet',
+        description: 'Grilled tilapia with chips and garden salad',
+        price: 280.00,
+        category: 'Main Course',
+        image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=400&fit=crop',
         isAvailable: true
       },
       {
-        name: 'Milk Shake',
-        description: 'Creamy vanilla milkshake with whipped cream',
-        price: 180.00,
-        category: 'Beverage',
-        image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?w=400',
+        name: 'Vegetable Samosa',
+        description: 'Crispy pastry filled with spiced vegetables',
+        price: 50.00,
+        category: 'Snacks',
+        image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=400&fit=crop',
         isAvailable: true
       },
       {
-        name: 'Coffee',
-        description: 'Freshly brewed coffee with cream and sugar',
+        name: 'Fresh Juice',
+        description: 'Orange, mango, or passion fruit juice',
+        price: 80.00,
+        category: 'Beverages',
+        image: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&h=400&fit=crop',
+        isAvailable: true
+      },
+      {
+        name: 'Chapati & Beans',
+        description: 'Soft chapati served with stewed beans',
         price: 120.00,
-        category: 'Beverage',
-        image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400',
+        category: 'Breakfast',
+        image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=400&fit=crop',
+        isAvailable: true
+      },
+      {
+        name: 'Mandazi',
+        description: 'Sweet coconut bread, perfect with tea',
+        price: 30.00,
+        category: 'Snacks',
+        image: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=400&fit=crop',
+        isAvailable: true
+      },
+      {
+        name: 'Chai Tea',
+        description: 'Traditional Kenyan tea with milk and spices',
+        price: 40.00,
+        category: 'Beverages',
+        image: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=400&h=400&fit=crop',
         isAvailable: true
       }
     ];
 
     // Create menu items
     for (const item of menuItems) {
-      await prisma.menuItem.upsert({
+      const menuItem = await prisma.menuItem.upsert({
         where: { name: item.name },
-        update: {
-          description: item.description,
-          price: item.price,
-          category: item.category,
-          image: item.image,
-          isAvailable: item.isAvailable
-        },
+        update: {},
         create: item
       });
+      console.log('✅ Menu item created:', menuItem.name);
     }
 
-    console.log('✅ Menu items created successfully');
-
-    // Create sample staff user
-    const staffPassword = await bcrypt.hash('staff123', 12);
-    
-    const staff = await prisma.user.upsert({
-      where: { email: 'staff@smartmeal.com' },
-      update: {},
-      create: {
-        name: 'Jane Staff',
-        email: 'staff@smartmeal.com',
-        phone: '254722222222',
-        password: staffPassword,
-        role: 'STAFF',
-        isActive: true
+    // Create sample orders for testing
+    const sampleOrders = [
+      {
+        orderNumber: 'SM001234',
+        customerName: 'John Doe',
+        customerPhone: '254711111111',
+        totalAmount: 330.00,
+        status: 'COMPLETED',
+        paymentStatus: 'COMPLETED',
+        phoneNumber: '254711111111',
+        transactionId: 'MPESA123456789',
+        notes: 'Extra spicy please'
+      },
+      {
+        orderNumber: 'SM001235',
+        customerName: 'Jane Smith',
+        customerPhone: '254722222222',
+        totalAmount: 600.00,
+        status: 'PREPARING',
+        paymentStatus: 'COMPLETED',
+        phoneNumber: '254722222222',
+        transactionId: 'MPESA987654321',
+        notes: 'No onions'
+      },
+      {
+        orderNumber: 'SM001236',
+        customerName: 'Mike Johnson',
+        customerPhone: '254733333333',
+        totalAmount: 310.00,
+        status: 'PENDING',
+        paymentStatus: 'PENDING',
+        phoneNumber: '254733333333'
       }
-    });
+    ];
 
-    console.log('✅ Staff user created:', staff.email);
+    // Create sample orders
+    for (const orderData of sampleOrders) {
+      const order = await prisma.order.create({
+        data: orderData
+      });
+
+      // Add order items based on order
+      if (order.orderNumber === 'SM001234') {
+        // John's order: Chicken Rice Bowl + Fresh Juice
+        await prisma.orderItem.createMany({
+          data: [
+            {
+              orderId: order.id,
+              menuItemId: (await prisma.menuItem.findFirst({ where: { name: 'Chicken Rice Bowl' } })).id,
+              quantity: 1,
+              unitPrice: 250.00,
+              totalPrice: 250.00
+            },
+            {
+              orderId: order.id,
+              menuItemId: (await prisma.menuItem.findFirst({ where: { name: 'Fresh Juice' } })).id,
+              quantity: 1,
+              unitPrice: 80.00,
+              totalPrice: 80.00
+            }
+          ]
+        });
+      } else if (order.orderNumber === 'SM001235') {
+        // Jane's order: Beef Stew & Ugali × 2
+        await prisma.orderItem.createMany({
+          data: [
+            {
+              orderId: order.id,
+              menuItemId: (await prisma.menuItem.findFirst({ where: { name: 'Beef Stew & Ugali' } })).id,
+              quantity: 2,
+              unitPrice: 300.00,
+              totalPrice: 600.00
+            }
+          ]
+        });
+      } else if (order.orderNumber === 'SM001236') {
+        // Mike's order: Vegetable Samosa × 3 + Fresh Juice × 2
+        await prisma.orderItem.createMany({
+          data: [
+            {
+              orderId: order.id,
+              menuItemId: (await prisma.menuItem.findFirst({ where: { name: 'Vegetable Samosa' } })).id,
+              quantity: 3,
+              unitPrice: 50.00,
+              totalPrice: 150.00
+            },
+            {
+              orderId: order.id,
+              menuItemId: (await prisma.menuItem.findFirst({ where: { name: 'Fresh Juice' } })).id,
+              quantity: 2,
+              unitPrice: 80.00,
+              totalPrice: 160.00
+            }
+          ]
+        });
+      }
+
+      console.log('✅ Sample order created:', order.orderNumber);
+    }
 
     console.log('🎉 Database seeding completed successfully!');
-    console.log('\n📋 Default Login Credentials:');
-    console.log('👨‍💼 Admin: admin@smartmeal.com / admin123');
-    console.log('👩‍💼 Staff: staff@smartmeal.com / staff123');
-    console.log('\n💡 Note: Students can order without logging in!');
+    console.log('\n📋 Sample Data Created:');
+    console.log(`- Admin User: ${adminUser.email}`);
+    console.log(`- Menu Items: ${menuItems.length} items`);
+    console.log(`- Sample Orders: ${sampleOrders.length} orders`);
+    console.log('\n🔑 Default Admin Credentials:');
+    console.log('Email: admin@smartmeal.com');
+    console.log('Password: admin123');
 
   } catch (error) {
-    console.error('❌ Error seeding database:', error);
+    console.error('❌ Error during seeding:', error);
     throw error;
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Run the seed function
 main()
-  .catch((error) => {
-    console.error('❌ Seeding failed:', error);
+  .catch((e) => {
+    console.error('❌ Seeding failed:', e);
     process.exit(1);
   });

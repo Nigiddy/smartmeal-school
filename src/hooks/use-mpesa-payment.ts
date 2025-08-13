@@ -53,6 +53,94 @@ export const useMpesaPayment = () => {
   }, []);
 
   /**
+   * Start payment monitoring
+   */
+  const startPaymentMonitoring = useCallback((checkoutRequestId: string) => {
+    // Clear any existing interval
+    if (statusCheckInterval) {
+      clearInterval(statusCheckInterval);
+    }
+
+    // Start progress simulation
+    let progress = 20;
+    const progressInterval = setInterval(() => {
+      progress += Math.random() * 10;
+      if (progress < 90) {
+        setPaymentState(prev => ({ ...prev, progress: Math.min(progress, 90) }));
+      }
+    }, 2000);
+
+    // Start status checking
+    const statusInterval = setInterval(async () => {
+      try {
+        const statusResult = await MpesaService.checkPaymentStatus(checkoutRequestId);
+        
+        if (statusResult.status === 'COMPLETED') {
+          clearInterval(progressInterval);
+          clearInterval(statusInterval);
+          setStatusCheckInterval(null);
+          
+          setPaymentState({
+            status: 'success',
+            progress: 100,
+            transactionId: statusResult.transactionId,
+            checkoutRequestId
+          });
+          
+          toast({
+            title: 'Payment successful!',
+            description: 'Your order has been confirmed',
+          });
+        } else if (statusResult.status === 'FAILED') {
+          clearInterval(progressInterval);
+          clearInterval(statusInterval);
+          setStatusCheckInterval(null);
+          
+          setPaymentState({
+            status: 'failed',
+            progress: 0,
+            error: statusResult.resultDesc || 'Payment failed',
+            checkoutRequestId
+          });
+          
+          toast({
+            title: 'Payment failed',
+            description: statusResult.resultDesc || 'Please try again',
+            variant: 'destructive'
+          });
+        }
+      } catch (error) {
+        console.error('Error checking payment status:', error);
+        // Continue checking, don't fail the payment yet
+      }
+    }, 5000); // Check every 5 seconds
+
+    setStatusCheckInterval(statusInterval);
+
+    // Set a timeout to stop checking after 5 minutes
+    setTimeout(() => {
+      clearInterval(progressInterval);
+      clearInterval(statusInterval);
+      setStatusCheckInterval(null);
+      
+      if (paymentState.status === 'processing') {
+        setPaymentState(prev => ({
+          ...prev,
+          status: 'failed',
+          error: 'Payment timeout. Please check your phone and try again.',
+          progress: 0
+        }));
+        
+        toast({
+          title: 'Payment timeout',
+          description: 'Please check your phone and try again',
+          variant: 'destructive'
+        });
+      }
+    }, 300000); // 5 minutes
+  }, [statusCheckInterval, paymentState.status, toast]);
+
+  /**
    * Initiate M-Pesa payment
    */
   const initiatePayment = useCallback(async (paymentData: PaymentData) => {
@@ -99,101 +187,28 @@ export const useMpesaPayment = () => {
       });
 
     } catch (error) {
-      const errorMessage = error instanceof ApiError 
-        ? error.message 
-        : 'Payment initiation failed. Please try again.';
-
+      console.error('Payment initiation error:', error);
+      
+      let errorMessage = 'Payment initiation failed';
+      if (error instanceof ApiError) {
+        errorMessage = error.message;
+      }
+      
       setPaymentState({
         status: 'failed',
         progress: 0,
         error: errorMessage
       });
-
+      
       toast({
         title: 'Payment failed',
         description: errorMessage,
         variant: 'destructive'
       });
-
+      
       throw error;
     }
-  }, [validatePhoneNumber, toast]);
-
-  /**
-   * Start monitoring payment status
-   */
-  const startPaymentMonitoring = useCallback((checkoutRequestId: string) => {
-    let progress = 20;
-    let attempts = 0;
-    const maxAttempts = 30; // 30 seconds max
-
-    const interval = setInterval(async () => {
-      attempts++;
-      progress = Math.min(20 + (attempts * 2), 90);
-
-      setPaymentState(prev => ({
-        ...prev,
-        progress
-      }));
-
-      try {
-        // Check payment status every 2 seconds
-        if (attempts % 2 === 0) {
-          const statusResponse = await MpesaService.checkPaymentStatus(checkoutRequestId);
-          
-          if (statusResponse.status === 'completed') {
-            clearInterval(interval);
-            setPaymentState({
-              status: 'success',
-              progress: 100,
-              transactionId: statusResponse.transactionId,
-              error: undefined
-            });
-            
-            toast({
-              title: 'Payment successful!',
-              description: `Transaction ID: ${statusResponse.transactionId}`,
-            });
-          } else if (statusResponse.status === 'failed') {
-            clearInterval(interval);
-            setPaymentState({
-              status: 'failed',
-              progress: 0,
-              error: 'Payment was declined or failed'
-            });
-            
-            toast({
-              title: 'Payment failed',
-              description: 'The payment was declined or failed. Please try again.',
-              variant: 'destructive'
-            });
-          }
-        }
-
-        // Timeout after max attempts
-        if (attempts >= maxAttempts) {
-          clearInterval(interval);
-          setPaymentState({
-            status: 'failed',
-            progress: 0,
-            error: 'Payment timeout. Please check your phone and try again.'
-          });
-          
-          toast({
-            title: 'Payment timeout',
-            description: 'No response received. Please check your phone and try again.',
-            variant: 'destructive'
-          });
-        }
-
-      } catch (error) {
-        console.error('Payment status check failed:', error);
-        // Continue monitoring even if status check fails
-      }
-    }, 1000);
-
-    setStatusCheckInterval(interval);
-  }, [toast]);
+  }, [validatePhoneNumber, startPaymentMonitoring, toast]);
 
   /**
    * Reset payment state
@@ -201,14 +216,12 @@ export const useMpesaPayment = () => {
   const resetPayment = useCallback(() => {
     if (statusCheckInterval) {
       clearInterval(statusCheckInterval);
+      setStatusCheckInterval(null);
     }
     
     setPaymentState({
       status: 'idle',
-      progress: 0,
-      error: undefined,
-      checkoutRequestId: undefined,
-      transactionId: undefined
+      progress: 0
     });
   }, [statusCheckInterval]);
 
@@ -218,6 +231,7 @@ export const useMpesaPayment = () => {
   const cancelPayment = useCallback(() => {
     if (statusCheckInterval) {
       clearInterval(statusCheckInterval);
+      setStatusCheckInterval(null);
     }
     
     setPaymentState({
@@ -225,13 +239,27 @@ export const useMpesaPayment = () => {
       progress: 0,
       error: 'Payment cancelled by user'
     });
-  }, [statusCheckInterval]);
+    
+    toast({
+      title: 'Payment cancelled',
+      description: 'You can try again anytime',
+    });
+  }, [statusCheckInterval, toast]);
+
+  /**
+   * Retry payment
+   */
+  const retryPayment = useCallback(async (paymentData: PaymentData) => {
+    resetPayment();
+    await initiatePayment(paymentData);
+  }, [resetPayment, initiatePayment]);
 
   return {
     paymentState,
     initiatePayment,
     resetPayment,
     cancelPayment,
+    retryPayment,
     validatePhoneNumber
   };
 };

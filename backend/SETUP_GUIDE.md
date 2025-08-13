@@ -1,310 +1,266 @@
 # SmartMeal Backend Setup Guide
 
-This guide will walk you through setting up the SmartMeal backend with MySQL, Prisma ORM, and M-Pesa integration.
+This guide will help you set up the SmartMeal backend with MySQL database and M-Pesa integration.
 
-## 🚀 Quick Setup Steps
+## 🚀 Quick Start
 
-### Step 1: Install Dependencies
+### Prerequisites
+- Node.js 18+ installed
+- MySQL 8.0+ installed and running
+- M-Pesa developer account (for payment integration)
 
-```bash
-cd backend
-npm install
-```
+### 1. Database Setup
 
-### Step 2: Database Setup
-
-#### 2.1 Install MySQL
-- **Windows**: Download and install MySQL from https://dev.mysql.com/downloads/
-- **macOS**: `brew install mysql`
-- **Linux**: `sudo apt install mysql-server`
-
-#### 2.2 Create Database
+#### Create MySQL Database
 ```sql
-CREATE DATABASE smartmeal_db;
-CREATE USER 'smartmeal_user'@'localhost' IDENTIFIED BY 'your_password';
+-- Connect to MySQL as root
+mysql -u root -p
+
+-- Create database
+CREATE DATABASE smartmeal_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Create user (optional but recommended)
+CREATE USER 'smartmeal_user'@'localhost' IDENTIFIED BY 'your_secure_password';
 GRANT ALL PRIVILEGES ON smartmeal_db.* TO 'smartmeal_user'@'localhost';
 FLUSH PRIVILEGES;
+
+-- Exit MySQL
+EXIT;
 ```
 
-#### 2.3 Configure Environment
+#### Test Database Connection
 ```bash
+mysql -u smartmeal_user -p smartmeal_db
+```
+
+### 2. Environment Configuration
+
+#### Create .env file
+```bash
+cd backend
 cp env.example .env
 ```
 
-Edit `.env` with your database credentials:
+#### Update .env with your values
 ```env
-DATABASE_URL="mysql://smartmeal_user:your_password@localhost:3306/smartmeal_db"
-```
+# Database Configuration
+DATABASE_URL="mysql://smartmeal_user:your_secure_password@localhost:3306/smartmeal_db"
 
-### Step 3: Database Migration
+# Server Configuration
+PORT=3001
+NODE_ENV=development
 
-```bash
-# Generate Prisma client
-npm run db:generate
+# JWT Configuration
+JWT_SECRET=your_super_secret_jwt_key_here_make_it_long_and_random
+JWT_EXPIRES_IN=24h
 
-# Push schema to database
-npm run db:push
-
-# Seed with sample data
-npm run db:seed
-```
-
-### Step 4: M-Pesa Setup
-
-#### 4.1 Get Daraja API Credentials
-1. Visit https://developer.safaricom.co.ke/
-2. Create an account and log in
-3. Create a new app for STK Push
-4. Note down your credentials:
-   - Consumer Key
-   - Consumer Secret
-   - Passkey
-   - Shortcode
-
-#### 4.2 Configure M-Pesa Environment Variables
-Edit your `.env` file:
-```env
+# M-Pesa Configuration (Get these from Safaricom Developer Portal)
 MPESA_CONSUMER_KEY=your_consumer_key_here
 MPESA_CONSUMER_SECRET=your_consumer_secret_here
 MPESA_PASSKEY=your_passkey_here
 MPESA_SHORTCODE=your_shortcode_here
 MPESA_ENVIRONMENT=sandbox
 MPESA_CALLBACK_URL=https://your-domain.com/api/mpesa/callback
+
+# Security Configuration
+CORS_ORIGIN=http://localhost:5173
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Admin Default Account
+ADMIN_EMAIL=admin@smartmeal.com
+ADMIN_PASSWORD=admin123
+ADMIN_PHONE=254700000000
+ADMIN_NAME=System Administrator
 ```
 
-**Note**: For development, you can use ngrok to expose your local server:
+### 3. Install Dependencies
+
 ```bash
-# Install ngrok
-npm install -g ngrok
-
-# Expose your local server
-ngrok http 3001
-
-# Use the ngrok URL as your callback URL
-MPESA_CALLBACK_URL=https://your-ngrok-url.ngrok.io/api/mpesa/callback
+cd backend
+npm install
 ```
 
-### Step 5: Start the Server
+### 4. Database Setup
 
+#### Generate Prisma Client
 ```bash
-# Development mode
+npx prisma generate
+```
+
+#### Run Database Migrations
+```bash
+npx prisma db push
+```
+
+#### Seed Database with Sample Data
+```bash
+npm run db:seed
+```
+
+### 5. Start the Server
+
+#### Development Mode
+```bash
 npm run dev
+```
 
-# Or production mode
+#### Production Mode
+```bash
 npm start
 ```
 
-The server will start on `http://localhost:3001`
+## 🔧 M-Pesa Integration Setup
 
-## 🔐 Authentication Model
+### 1. Get M-Pesa Developer Account
+1. Visit [Safaricom Developer Portal](https://developer.safaricom.co.ke/)
+2. Create an account and verify your email
+3. Create a new app for SmartMeal
 
-The SmartMeal system uses a simplified authentication approach:
+### 2. Get API Credentials
+- **Consumer Key**: Your app's consumer key
+- **Consumer Secret**: Your app's consumer secret  
+- **Passkey**: Your app's passkey
+- **Shortcode**: Your business shortcode (or test shortcode for sandbox)
 
-### For Students (Anonymous Orders)
-- **No registration required**: Students can place orders without creating accounts
-- **No login needed**: Orders are created with customer name and phone number
-- **Direct payment**: M-Pesa STK push works without authentication
+### 3. Configure Callback URL
+- For development: `http://localhost:3001/api/mpesa/callback`
+- For production: `https://your-domain.com/api/mpesa/callback`
 
-### For Admin/Staff
-- **Login required**: Admin and staff must authenticate to access the dashboard
-- **Role-based access**: Different permissions for admin vs staff
-- **JWT tokens**: Secure session management
+### 4. Test M-Pesa Integration
+1. Use sandbox environment for testing
+2. Test with sandbox phone numbers
+3. Verify callback handling
 
-### Default Test Accounts
-After running `npm run db:seed`, you can use:
-- **Admin**: `admin@smartmeal.com` / `admin123`
-- **Staff**: `staff@smartmeal.com` / `staff123`
+## 📊 Database Schema
 
-## 🧪 Testing the Setup
+The system uses the following main tables:
 
-### 1. Health Check
+### Users
+- Admin and staff accounts
+- Authentication and authorization
+
+### Menu Items
+- Food items with categories
+- Pricing and availability
+
+### Orders
+- Customer orders with status tracking
+- Payment information
+
+### Order Items
+- Individual items in each order
+- Quantities and pricing
+
+### Payment Transactions
+- M-Pesa payment records
+- Transaction status and callback data
+
+## 🚀 API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - Admin login
+- `GET /api/auth/me` - Get user profile
+- `POST /api/auth/logout` - Logout
+
+### Menu Management
+- `GET /api/menu` - Get all menu items
+- `GET /api/menu/categories` - Get menu categories
+- `POST /api/admin/menu` - Create menu item (admin)
+- `PUT /api/admin/menu/:id` - Update menu item (admin)
+- `DELETE /api/admin/menu/:id` - Delete menu item (admin)
+
+### Order Management
+- `POST /api/orders` - Create new order
+- `GET /api/orders` - Get all orders (admin)
+- `GET /api/orders/:id` - Get order by ID
+- `PATCH /api/orders/:id/status` - Update order status (admin)
+
+### M-Pesa Integration
+- `POST /api/mpesa/stk-push` - Initiate payment
+- `GET /api/mpesa/status/:id` - Check payment status
+- `POST /api/mpesa/callback` - M-Pesa callback handler
+
+## 🔒 Security Features
+
+- JWT authentication for admin routes
+- Rate limiting to prevent abuse
+- Input validation and sanitization
+- CORS configuration
+- Helmet security headers
+
+## 📝 Testing
+
+### Test Admin Login
 ```bash
+# Default credentials (after seeding)
+Email: admin@smartmeal.com
+Password: admin123
+```
+
+### Test API Endpoints
+```bash
+# Health check
 curl http://localhost:3001/api/health
-```
 
-Expected response:
-```json
-{
-  "success": true,
-  "message": "SmartMeal API is running",
-  "timestamp": "2023-12-01T10:00:00.000Z",
-  "environment": "development"
-}
-```
-
-### 2. Test Authentication
-```bash
-# Login with admin account
-curl -X POST http://localhost:3001/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@smartmeal.com",
-    "password": "admin123"
-  }'
-```
-
-### 3. Test Menu API
-```bash
-# Get all menu items
+# Get menu items
 curl http://localhost:3001/api/menu
 
-# Get menu categories
-curl http://localhost:3001/api/menu/categories
-```
-
-### 4. Test Order Creation
-```bash
-# Create an order (replace TOKEN with your JWT token)
-curl -X POST http://localhost:3001/api/orders \
+# Admin login
+curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer TOKEN" \
-  -d '{
-    "items": [
-      {
-        "menuItemId": "menu_item_id_here",
-        "quantity": 2
-      }
-    ],
-    "phoneNumber": "254700000000",
-    "notes": "Extra spicy please"
-  }'
+  -d '{"email":"admin@smartmeal.com","password":"admin123"}'
 ```
-
-## 🔧 Development Workflow
-
-### Database Management
-```bash
-# View database in Prisma Studio
-npm run db:studio
-
-# Reset database
-npm run db:push --force-reset
-
-# Seed database
-npm run db:seed
-```
-
-### API Testing with Postman
-1. Import the collection from `postman_collection.json` (if available)
-2. Set the base URL to `http://localhost:3001/api`
-3. Use the authentication endpoints to get a token
-4. Test all endpoints with the token
-
-### M-Pesa Testing
-1. Use sandbox environment for testing
-2. Test with sandbox phone numbers (e.g., 254708374149)
-3. Monitor callback logs in your server console
-4. Use ngrok for local development callbacks
 
 ## 🚨 Troubleshooting
 
-### Database Connection Issues
-```bash
-# Check MySQL service
-sudo systemctl status mysql
+### Common Issues
 
-# Restart MySQL
-sudo systemctl restart mysql
+#### Database Connection Failed
+- Verify MySQL is running
+- Check database credentials in .env
+- Ensure database exists
 
-# Check connection
-mysql -u smartmeal_user -p smartmeal_db
-```
+#### M-Pesa Integration Issues
+- Verify API credentials
+- Check callback URL configuration
+- Ensure proper environment (sandbox/production)
 
-### Prisma Issues
-```bash
-# Reset Prisma
-rm -rf node_modules/.prisma
-npm run db:generate
-
-# Reset database
-npm run db:push --force-reset
-npm run db:seed
-```
-
-### M-Pesa Issues
-1. Verify all environment variables are set
-2. Check callback URL is accessible
-3. Test with sandbox credentials first
-4. Monitor server logs for errors
-
-### Port Issues
-```bash
-# Check if port 3001 is in use
-lsof -i :3001
-
-# Kill process if needed
-kill -9 PID
-```
-
-## 📊 Monitoring
+#### JWT Token Issues
+- Check JWT_SECRET in .env
+- Verify token expiration settings
+- Clear browser localStorage if needed
 
 ### Logs
-- Development: Logs appear in console
-- Production: Configure Winston logging
-
-### Health Checks
+Check server logs for detailed error information:
 ```bash
-# API health
-curl http://localhost:3001/api/health
+# Development logs
+npm run dev
 
-# Database health
-curl http://localhost:3001/api/health/db
+# Production logs
+npm start
 ```
 
-### Performance
-- Monitor response times
-- Check database query performance
-- Monitor M-Pesa API calls
+## 📚 Additional Resources
 
-## 🔒 Security Checklist
+- [Prisma Documentation](https://www.prisma.io/docs/)
+- [M-Pesa API Documentation](https://developer.safaricom.co.ke/docs)
+- [Express.js Documentation](https://expressjs.com/)
+- [Node.js Documentation](https://nodejs.org/docs/)
 
-- [ ] Change default passwords
-- [ ] Use strong JWT secret
-- [ ] Configure CORS properly
-- [ ] Set up rate limiting
-- [ ] Use HTTPS in production
-- [ ] Secure database credentials
-- [ ] Validate all inputs
-- [ ] Set up logging and monitoring
-
-## 🚀 Production Deployment
-
-### Environment Variables
-```env
-NODE_ENV=production
-DATABASE_URL=mysql://user:pass@host:port/database
-JWT_SECRET=your_very_secure_jwt_secret
-MPESA_ENVIRONMENT=production
-MPESA_CALLBACK_URL=https://your-domain.com/api/mpesa/callback
-```
-
-### Database
-- Use production MySQL instance
-- Set up regular backups
-- Configure connection pooling
-- Monitor performance
-
-### Server
-- Use PM2 or similar process manager
-- Set up reverse proxy (nginx)
-- Configure SSL certificates
-- Set up monitoring (New Relic, DataDog, etc.)
-
-## 📞 Support
+## 🆘 Support
 
 If you encounter issues:
-1. Check the logs for error messages
-2. Verify all environment variables are set
-3. Test each component individually
-4. Check the troubleshooting section above
-5. Create an issue on GitHub
+1. Check the troubleshooting section above
+2. Review server logs for error details
+3. Verify all environment variables are set correctly
+4. Ensure database and dependencies are properly installed
 
----
+## 🎯 Next Steps
 
-**Next Steps**: After setting up the backend, you can:
-1. Connect your frontend to the API
-2. Test the complete payment flow
-3. Set up the admin dashboard
-4. Deploy to production
-
-Happy coding! 🎉
+After successful setup:
+1. Test all API endpoints
+2. Configure M-Pesa production credentials
+3. Set up proper SSL certificates for production
+4. Configure monitoring and logging
+5. Set up backup and recovery procedures

@@ -1,249 +1,309 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Plus, Minus, ArrowLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Search, 
+  ShoppingCart, 
+  ArrowLeft, 
+  Plus, 
+  Minus,
+  Loader2,
+  AlertCircle
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import chickenRiceBowlImg from "@/assets/chicken-rice-bowl.jpg";
-import beefStewUgaliImg from "@/assets/beef-stew-ugali.jpg";
-import vegetableSamosaImg from "@/assets/vegetable-samosa.jpg";
-import freshJuiceImg from "@/assets/fresh-juice.jpg";
+import { MenuService, MenuItem, apiUtils } from "@/lib/api";
 
-interface MenuItem {
+interface CartItem {
   id: string;
   name: string;
-  description: string;
   price: number;
-  category: string;
-  image: string;
-  available: boolean;
+  quantity: number;
+  image?: string;
 }
-
-const mockMenu: MenuItem[] = [
-  {
-    id: "1",
-    name: "Chicken Rice Bowl",
-    description: "Grilled chicken with steamed rice and vegetables",
-    price: 250,
-    category: "Main Course",
-    image: chickenRiceBowlImg,
-    available: true
-  },
-  {
-    id: "2", 
-    name: "Beef Stew & Ugali",
-    description: "Traditional beef stew served with fresh ugali",
-    price: 300,
-    category: "Main Course", 
-    image: beefStewUgaliImg,
-    available: true
-  },
-  {
-    id: "3",
-    name: "Fish Fillet",
-    description: "Grilled tilapia with chips and salad",
-    price: 280,
-    category: "Main Course",
-    image: chickenRiceBowlImg, 
-    available: false
-  },
-  {
-    id: "4",
-    name: "Vegetable Samosa",
-    description: "Crispy pastry filled with spiced vegetables",
-    price: 50,
-    category: "Snack",
-    image: vegetableSamosaImg,
-    available: true
-  },
-  {
-    id: "5",
-    name: "Fresh Juice",
-    description: "Orange, mango, or passion fruit juice",
-    price: 80,
-    category: "Beverage",
-    image: freshJuiceImg,
-    available: true
-  }
-];
 
 const StudentMenu = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [cart, setCart] = useState<{[key: string]: number}>({});
   
-  const categories = Array.from(new Set(mockMenu.map(item => item.category)));
-  
-  const addToCart = (itemId: string) => {
-    setCart(prev => ({
-      ...prev,
-      [itemId]: (prev[itemId] || 0) + 1
-    }));
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<MenuItem[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch menu items on component mount
+  useEffect(() => {
+    fetchMenuItems();
+  }, []);
+
+  // Filter items when search query or category changes
+  useEffect(() => {
+    let filtered = menuItems;
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(item => item.category === selectedCategory);
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredItems(filtered);
+  }, [menuItems, selectedCategory, searchQuery]);
+
+  const fetchMenuItems = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [menuData, categoriesData] = await Promise.all([
+        MenuService.getMenuItems(),
+        MenuService.getMenuCategories()
+      ]);
+      
+      setMenuItems(menuData);
+      setCategories(categoriesData);
+      setFilteredItems(menuData);
+    } catch (error) {
+      console.error('Error fetching menu:', error);
+      setError('Failed to load menu. Please try again.');
+      toast({
+        title: 'Error',
+        description: 'Failed to load menu. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addToCart = (item: MenuItem) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(cartItem => cartItem.id === item.id);
+      
+      if (existingItem) {
+        return prevCart.map(cartItem =>
+          cartItem.id === item.id
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
+      } else {
+        return [...prevCart, {
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: 1,
+          image: item.image
+        }];
+      }
+    });
+
     toast({
-      title: "Added to cart",
-      description: "Item has been added to your order",
+      title: 'Added to cart',
+      description: `${item.name} added to your cart`,
     });
   };
 
   const removeFromCart = (itemId: string) => {
-    setCart(prev => {
-      const newCart = { ...prev };
-      if (newCart[itemId] > 1) {
-        newCart[itemId]--;
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.id === itemId);
+      
+      if (existingItem && existingItem.quantity > 1) {
+        return prevCart.map(item =>
+          item.id === itemId
+            ? { ...item, quantity: item.quantity - 1 }
+            : item
+        );
       } else {
-        delete newCart[itemId];
+        return prevCart.filter(item => item.id !== itemId);
       }
-      return newCart;
     });
   };
 
-  const getTotalItems = () => {
-    return Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+  const getCartTotal = () => {
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  const getTotalPrice = () => {
-    return Object.entries(cart).reduce((total, [itemId, qty]) => {
-      const item = mockMenu.find(m => m.id === itemId);
-      return total + (item ? item.price * qty : 0);
-    }, 0);
+  const getCartItemCount = () => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
   const proceedToOrder = () => {
-    if (getTotalItems() === 0) {
+    if (cart.length === 0) {
       toast({
-        title: "Cart is empty",
-        description: "Please add items to your cart before proceeding",
-        variant: "destructive"
+        title: 'Empty cart',
+        description: 'Please add items to your cart first',
+        variant: 'destructive'
       });
       return;
     }
-    navigate("/order", { state: { cart, menu: mockMenu } });
+
+    navigate("/order", { 
+      state: { 
+        items: cart,
+        total: getCartTotal()
+      } 
+    });
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading menu...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-muted flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={fetchMenuItems}>Try Again</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted">
       {/* Header */}
-      <div className="bg-gradient-primary text-primary-foreground p-4">
+      <div className="bg-gradient-primary text-primary-foreground p-4 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => navigate("/")}
-              className="text-primary-foreground hover:bg-white/20"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">SmartMeal Menu</h1>
-              <p className="text-sm opacity-90">Fresh meals for students</p>
-            </div>
-          </div>
           <Button 
-            onClick={proceedToOrder}
-            className="bg-white text-primary hover:bg-gray-100 relative"
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate("/")}
+            className="text-primary-foreground hover:bg-white/20"
           >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            Cart ({getTotalItems()})
-            {getTotalItems() > 0 && (
-              <Badge className="absolute -top-2 -right-2 bg-accent text-accent-foreground">
-                {getTotalItems()}
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="text-center">
+            <h1 className="text-xl font-semibold">Menu</h1>
+            <p className="text-sm opacity-90">Order your favorite meals</p>
+          </div>
+
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate("/order")}
+            className="text-primary-foreground hover:bg-white/20 relative"
+            disabled={cart.length === 0}
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {getCartItemCount() > 0 && (
+              <Badge 
+                variant="secondary" 
+                className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs"
+              >
+                {getCartItemCount()}
               </Badge>
             )}
           </Button>
         </div>
       </div>
 
-      {/* Menu Content */}
-      <div className="max-w-4xl mx-auto p-4">
-        {categories.map((category) => (
-          <div key={category} className="mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-foreground">{category}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {mockMenu
-                .filter(item => item.category === category)
-                .map((item) => (
-                  <Card key={item.id} className="shadow-card hover:shadow-medium transition-all duration-300">
-                    <CardHeader className="p-0">
-                      <div className="h-48 bg-muted rounded-t-lg bg-cover bg-center" 
-                           style={{ backgroundImage: `url(${item.image})` }} />
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <CardTitle className="text-lg">{item.name}</CardTitle>
-                        <div className="text-right">
-                          <p className="text-xl font-bold text-primary">KSh {item.price}</p>
-                          {!item.available && (
-                            <Badge variant="destructive" className="text-xs">
-                              Out of Stock
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <CardDescription className="text-sm mb-4">
-                        {item.description}
-                      </CardDescription>
-                    </CardContent>
-                    <CardFooter className="p-4 pt-0">
-                      {item.available ? (
-                        <div className="flex items-center justify-between w-full">
-                          {cart[item.id] ? (
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => removeFromCart(item.id)}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="font-medium px-2">{cart[item.id]}</span>
-                              <Button
-                                size="sm"
-                                onClick={() => addToCart(item.id)}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button onClick={() => addToCart(item.id)} className="flex-1">
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add to Cart
-                            </Button>
-                          )}
-                        </div>
-                      ) : (
-                        <Button disabled className="w-full">
-                          Out of Stock
-                        </Button>
-                      )}
-                    </CardFooter>
-                  </Card>
-                ))}
-            </div>
+      {/* Search and Filters */}
+      <div className="p-4 max-w-4xl mx-auto">
+        <div className="mb-6">
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search for meals..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
-        ))}
+
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="all">All</TabsTrigger>
+              {categories.map(category => (
+                <TabsTrigger key={category} value={category}>
+                  {category}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {/* Menu Items */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-24">
+          {filteredItems.map((item) => (
+            <Card key={item.id} className="overflow-hidden">
+              {item.image && (
+                <div className="aspect-square overflow-hidden">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">{item.name}</CardTitle>
+                <CardDescription className="line-clamp-2">
+                  {item.description}
+                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <Badge variant={item.isAvailable ? "default" : "secondary"}>
+                    {item.isAvailable ? "Available" : "Unavailable"}
+                  </Badge>
+                  <span className="text-lg font-semibold text-primary">
+                    {apiUtils.formatCurrency(item.price)}
+                  </span>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-0">
+                <Button
+                  onClick={() => addToCart(item)}
+                  disabled={!item.isAvailable}
+                  className="w-full"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add to Cart
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
-      {/* Floating Cart Summary */}
-      {getTotalItems() > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 max-w-md mx-auto">
-          <Card className="bg-primary text-primary-foreground shadow-medium">
-            <CardContent className="p-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="font-medium">{getTotalItems()} items</p>
-                  <p className="text-sm opacity-90">Total: KSh {getTotalPrice()}</p>
-                </div>
-                <Button 
-                  onClick={proceedToOrder}
-                  className="bg-white text-primary hover:bg-gray-100"
-                >
-                  Order Now
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Floating Cart Button */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-20">
+          <Button 
+            onClick={proceedToOrder}
+            size="lg"
+            className="shadow-lg"
+          >
+            <ShoppingCart className="h-5 w-5 mr-2" />
+            Proceed to Order ({getCartItemCount()} items)
+            <span className="ml-2 font-semibold">
+              {apiUtils.formatCurrency(getCartTotal())}
+            </span>
+          </Button>
         </div>
       )}
     </div>

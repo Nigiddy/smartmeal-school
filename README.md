@@ -1,267 +1,304 @@
-# SmartMeal - M-Pesa Food Ordering System
+# 🍽️ SmartMeal - Food Ordering System for Institutions
 
-A modern, mobile-first food ordering system designed for educational institutions in Kenya, featuring secure M-Pesa payment integration.
+A modern, mobile-first food ordering system designed specifically for schools and institutions, featuring M-Pesa payment integration and real-time order management.
 
-## 🚀 Features
+## ✨ Features
 
-- **Mobile-First Design** - Optimized for smartphone users
-- **M-Pesa Integration** - Secure STK Push payments
-- **Real-time Order Tracking** - Live order status updates
-- **Admin Dashboard** - Comprehensive order and menu management
-- **Digital Receipts** - Instant payment confirmations
-- **Responsive UI** - Works on all devices
+### 🎯 Core User Features
+- **Anonymous Ordering**: Students can order meals without creating accounts
+- **M-Pesa Integration**: Seamless mobile money payments via STK push
+- **Real-time Updates**: Live order status tracking and notifications
+- **Digital Receipts**: Instant order confirmation and receipts
+- **Mobile Optimized**: Responsive design for all devices
 
-<<<<<<< Updated upstream
-On the backend I'm using Node.js
-Database: MySQL
-=======
-## 🏗️ Architecture
+### 👨‍💼 Admin & Staff Features
+- **Dashboard**: Comprehensive overview of all orders and metrics
+- **Order Management**: Real-time status updates and workflow management
+- **Menu Management**: Add, edit, and manage food items with categories
+- **User Management**: Admin and staff account management
+- **Analytics**: Sales reports and performance insights
 
-### Frontend Stack
-- **React 18** with TypeScript
-- **Vite** for fast development and building
-- **shadcn/ui** for modern UI components
-- **Tailwind CSS** for styling
-- **React Router** for navigation
-- **React Query** for data fetching
-- **React Hook Form** for form handling
+### 🛡️ Technical Features
+- **Modern Stack**: React 18, TypeScript, Tailwind CSS
+- **Real-time API**: Express.js backend with Prisma ORM
+- **Secure**: JWT authentication, rate limiting, input validation
+- **Scalable**: MySQL database with proper indexing
+- **Production Ready**: Environment configuration and deployment setup
 
-### Backend Requirements
-- **Node.js** with Express.js
-- **MySQL for data persistence
-- **JWT** for authentication
-- **M-Pesa Daraja API** integration
-- **WebSocket** for real-time updates
-
-## 📁 Project Structure
-
-```
-src/
-├── components/          # Reusable UI components
-│   ├── ui/            # shadcn/ui components
-│   └── MobileHeader.tsx
-├── hooks/              # Custom React hooks
-│   ├── use-mobile.tsx
-│   ├── use-toast.ts
-│   └── use-mpesa-payment.ts  # M-Pesa payment logic
-├── lib/                # Utility libraries
-│   ├── api.ts         # API service layer
-│   └── utils.ts       # General utilities
-├── pages/              # Application pages
-│   ├── Index.tsx      # Landing page
-│   ├── StudentMenu.tsx # Menu browsing
-│   ├── OrderForm.tsx  # Order details
-│   ├── Payment.tsx    # M-Pesa payment
-│   ├── Confirmation.tsx # Order confirmation
-│   ├── AdminLogin.tsx # Admin authentication
-│   ├── AdminDashboard.tsx # Admin management
-│   └── NotFound.tsx   # 404 page
-└── App.tsx            # Main application component
-```
-
-## 🔧 Setup Instructions
+## 🚀 Quick Start
 
 ### Prerequisites
 - Node.js 18+ 
-- npm or yarn
-- M-Pesa Developer Account
+- MySQL 8.0+
+- M-Pesa developer account
 
-### 1. Clone and Install
+### 1. Clone Repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/yourusername/smartmeal.git
 cd smartmeal
+```
+
+### 2. Frontend Setup
+```bash
+# Install dependencies
 npm install
-```
 
-### 2. Environment Configuration
-Create a `.env` file based on `env.example`:
-
-```bash
-# M-Pesa Configuration
-VITE_MPESA_CONSUMER_KEY=your_consumer_key_here
-VITE_MPESA_CONSUMER_SECRET=your_consumer_secret_here
-VITE_MPESA_PASSKEY=your_passkey_here
-VITE_MPESA_SHORTCODE=your_shortcode_here
-VITE_MPESA_ENVIRONMENT=sandbox
-
-# Backend API Configuration
-VITE_API_BASE_URL=http://localhost:3001/api
-VITE_API_TIMEOUT=30000
-
-# Application Configuration
-VITE_APP_NAME=SmartMeal
-VITE_APP_VERSION=1.0.0
-VITE_APP_ENVIRONMENT=development
-```
-
-### 3. M-Pesa Setup
-1. Register at [Safaricom Developer Portal](https://developer.safaricom.co.ke/)
-2. Create an app and get your credentials
-3. Configure your callback URLs
-4. Test with sandbox environment first
-
-### 4. Development
-```bash
+# Start development server
 npm run dev
 ```
 
-### 5. Build for Production
+### 3. Backend Setup
 ```bash
-npm run build
+cd backend
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp env.example .env
+# Edit .env with your database and M-Pesa credentials
+
+# Set up database
+npx prisma generate
+npx prisma db push
+npm run db:seed
+
+# Start backend server
+npm run dev
 ```
 
-## 🔐 Security Considerations
+### 4. Access the Application
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3001
+- **Admin Dashboard**: http://localhost:5173/admin/login
+
+## 🔧 Configuration
 
 ### Environment Variables
-- Never commit `.env` files to version control
-- Use different credentials for development and production
-- Rotate API keys regularly
 
-### M-Pesa Security
-- Validate all callback data
-- Implement proper error handling
-- Use HTTPS in production
-- Store sensitive data securely
-
-### Frontend Security
-- Validate all user inputs
-- Implement proper CORS policies
-- Use secure HTTP headers
-- Sanitize data before display
-
-## 📱 M-Pesa Integration
-
-### Payment Flow
-1. **Initiate Payment** - Send STK Push request
-2. **User Confirmation** - Customer enters PIN
-3. **Callback Processing** - Handle M-Pesa response
-4. **Status Verification** - Confirm payment success
-5. **Order Completion** - Update order status
-
-### Error Handling
-- Network timeouts
-- Invalid phone numbers
-- Insufficient funds
-- User cancellation
-- System errors
-
-## 🗄️ Database Schema
-
-### Orders Collection
-```javascript
-{
-  id: String,
-  customer: {
-    name: String,
-    studentId: String,
-    class: String,
-    phone: String,
-    notes: String
-  },
-  items: [{
-    id: String,
-    name: String,
-    price: Number,
-    quantity: Number
-  }],
-  total: Number,
-  status: String, // pending, paid, preparing, ready, completed, cancelled
-  paymentMethod: String, // M-Pesa, Cash
-  paymentStatus: String, // pending, completed, failed
-  orderTime: Date,
-  mpesaRequestId: String,
-  mpesaCheckoutId: String,
-  transactionId: String
-}
+#### Frontend (.env)
+```env
+VITE_API_BASE_URL=http://localhost:3001/api
+VITE_MPESA_ENVIRONMENT=sandbox
 ```
 
-### Menu Items Collection
-```javascript
-{
-  id: String,
-  name: String,
-  description: String,
-  price: Number,
-  category: String,
-  available: Boolean,
-  image: String
-}
+#### Backend (.env)
+```env
+DATABASE_URL="mysql://user:password@localhost:3306/smartmeal_db"
+JWT_SECRET=your_jwt_secret_here
+MPESA_CONSUMER_KEY=your_consumer_key
+MPESA_CONSUMER_SECRET=your_consumer_secret
+MPESA_PASSKEY=your_passkey
+MPESA_SHORTCODE=your_shortcode
+```
+
+### Database Setup
+```sql
+CREATE DATABASE smartmeal_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'smartmeal_user'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON smartmeal_db.* TO 'smartmeal_user'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+## 📱 User Flow
+
+### Student Ordering Process
+1. **Browse Menu**: View available meals with categories and pricing
+2. **Add to Cart**: Select items and quantities
+3. **Order Details**: Provide name, phone, and special instructions
+4. **Payment**: Complete payment via M-Pesa STK push
+5. **Confirmation**: Receive order confirmation and tracking
+
+### Admin Management Process
+1. **Login**: Access admin dashboard with credentials
+2. **Monitor Orders**: View real-time order status and updates
+3. **Manage Menu**: Add, edit, and control food item availability
+4. **Track Performance**: Monitor sales, revenue, and order metrics
+
+## 🏗️ Architecture
+
+### Frontend
+- **React 18**: Modern React with hooks and functional components
+- **TypeScript**: Type-safe development and better IDE support
+- **Tailwind CSS**: Utility-first CSS framework for rapid UI development
+- **shadcn/ui**: High-quality, accessible UI components
+- **React Router**: Client-side routing and navigation
+- **React Query**: Server state management and caching
+
+### Backend
+- **Express.js**: Fast, unopinionated web framework
+- **Prisma ORM**: Type-safe database client and migrations
+- **MySQL**: Reliable relational database
+- **JWT**: Secure authentication and authorization
+- **M-Pesa API**: Mobile money payment integration
+- **Rate Limiting**: Protection against abuse and DDoS
+
+### Database Schema
+```
+users (admin/staff accounts)
+├── id, email, phone, name, role, password
+├── orders (relationship)
+
+menu_items (food items)
+├── id, name, description, price, category, image, isAvailable
+├── order_items (relationship)
+
+orders (customer orders)
+├── id, orderNumber, customerName, customerPhone, totalAmount
+├── status, paymentStatus, phoneNumber, transactionId
+├── order_items (relationship)
+
+order_items (order line items)
+├── id, orderId, menuItemId, quantity, unitPrice, totalPrice
+├── menu_item (relationship)
+
+payment_transactions (M-Pesa records)
+├── id, orderId, transactionId, amount, phoneNumber, status
+├── mpesaRequestId, checkoutRequestId, resultCode, resultDesc
+```
+
+## 🔌 API Endpoints
+
+### Public Endpoints
+- `GET /api/menu` - Get all menu items
+- `GET /api/menu/categories` - Get menu categories
+- `POST /api/orders` - Create new order
+- `POST /api/mpesa/stk-push` - Initiate M-Pesa payment
+
+### Protected Endpoints (Admin)
+- `POST /api/auth/login` - Admin authentication
+- `GET /api/orders` - Get all orders
+- `PATCH /api/orders/:id/status` - Update order status
+- `POST /api/admin/menu` - Create menu item
+- `PUT /api/admin/menu/:id` - Update menu item
+- `DELETE /api/admin/menu/:id` - Delete menu item
+
+## 🧪 Testing
+
+### Default Test Accounts
+After seeding the database:
+- **Admin**: `admin@smartmeal.com` / `admin123`
+
+### API Testing
+```bash
+# Health check
+curl http://localhost:3001/api/health
+
+# Get menu
+curl http://localhost:3001/api/menu
+
+# Admin login
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@smartmeal.com","password":"admin123"}'
 ```
 
 ## 🚀 Deployment
 
-### Frontend (Vercel/Netlify)
+### Frontend Deployment
 ```bash
+# Build for production
 npm run build
-# Deploy dist/ folder
+
+# Deploy to your hosting service (Vercel, Netlify, etc.)
 ```
 
-### Backend (Railway/Heroku)
+### Backend Deployment
 ```bash
-# Set environment variables
-# Deploy Node.js application
+# Set production environment
+NODE_ENV=production
+
+# Use PM2 for process management
+npm install -g pm2
+pm2 start src/server.js --name smartmeal-backend
 ```
 
-## 📊 Monitoring & Analytics
+### Production Checklist
+- [ ] Set `NODE_ENV=production`
+- [ ] Configure production database
+- [ ] Set up M-Pesa production credentials
+- [ ] Configure SSL certificates
+- [ ] Set up monitoring and logging
+- [ ] Configure backup procedures
 
-### Key Metrics
-- Order completion rate
-- Payment success rate
-- Average order value
-- Peak ordering times
-- Popular menu items
+## 🚨 Troubleshooting
 
-### Error Tracking
-- Payment failures
-- Network timeouts
-- Invalid inputs
-- System errors
+### Common Issues
 
-## 🔧 Development Guidelines
+#### Frontend Not Loading
+- Check if backend is running on port 3001
+- Verify API base URL in environment variables
+- Check browser console for errors
 
-### Code Style
-- Use TypeScript for type safety
-- Follow ESLint configuration
-- Write meaningful commit messages
-- Add JSDoc comments for complex functions
+#### Backend Connection Issues
+- Verify MySQL service is running
+- Check database credentials in .env
+- Ensure database exists and is accessible
 
-### Testing
-- Unit tests for utility functions
-- Integration tests for API calls
-- E2E tests for payment flow
-- Manual testing for M-Pesa integration
+#### M-Pesa Integration Problems
+- Verify API credentials are correct
+- Check callback URL configuration
+- Test with sandbox environment first
 
-### Performance
-- Lazy load components
-- Optimize images
-- Minimize bundle size
-- Use React.memo for expensive components
+### Debug Mode
+```bash
+# Frontend debug
+npm run dev
+
+# Backend debug
+npm run dev
+
+# Database inspection
+npx prisma studio
+```
+
+## 📚 Documentation
+
+- [Backend Setup Guide](backend/SETUP_GUIDE.md)
+- [API Documentation](backend/README.md)
+- [Database Schema](backend/prisma/schema.prisma)
+- [Frontend Components](src/components/)
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-For support and questions:
-- Create an issue on GitHub
-- Check the documentation
-- Contact the development team
+- **Issues**: Create an issue on GitHub
+- **Documentation**: Check the docs folder and setup guides
+- **Community**: Join our discussions and Q&A
 
-## 🔄 Changelog
+## 🎯 Roadmap
 
-### v1.0.0
-- Initial release
-- M-Pesa integration
-- Admin dashboard
-- Mobile-first design
-- Real-time order tracking
->>>>>>> Stashed changes
+### Phase 1 (Current)
+- ✅ Core ordering system
+- ✅ M-Pesa integration
+- ✅ Admin dashboard
+- ✅ Basic menu management
+
+### Phase 2 (Next)
+- 🔄 Inventory tracking
+- 🔄 Advanced analytics
+- 🔄 Push notifications
+- 🔄 Offline support
+
+### Phase 3 (Future)
+- 📋 Multi-location support
+- 📋 Advanced reporting
+- 📋 Customer loyalty program
+- 📋 Mobile app
+
+---
+
+**Built with ❤️ for educational institutions**
+
+*SmartMeal - Making school meals accessible and convenient*
