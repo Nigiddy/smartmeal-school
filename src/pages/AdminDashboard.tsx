@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   Search, 
   Plus, 
@@ -19,10 +20,15 @@ import {
   Loader2,
   AlertCircle,
   RefreshCw,
-  Utensils
+  Utensils,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { OrdersService, MenuService, AuthService, apiUtils } from "@/lib/api";
+import MenuItemForm from "@/components/MenuItemForm";
+import NotificationBell from "@/components/NotificationBell";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 
 interface OrderData {
   id: string;
@@ -76,6 +82,11 @@ const AdminDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState("orders");
+  
+  // Menu management state
+  const [showMenuForm, setShowMenuForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   // Check authentication on mount
   useEffect(() => {
@@ -174,6 +185,75 @@ const AdminDashboard = () => {
     }
   };
 
+  // Menu management functions
+  const handleMenuSave = (savedItem: MenuItem) => {
+    if (editingItem) {
+      // Update existing item
+      setMenuItems(prev => prev.map(item => 
+        item.id === savedItem.id ? savedItem : item
+      ));
+    } else {
+      // Add new item
+      setMenuItems(prev => [savedItem, ...prev]);
+    }
+    
+    setShowMenuForm(false);
+    setEditingItem(null);
+  };
+
+  const handleMenuEdit = (item: MenuItem) => {
+    setEditingItem(item);
+    setShowMenuForm(true);
+  };
+
+  const handleMenuDelete = async (itemId: string) => {
+    try {
+      await MenuService.deleteMenuItem(itemId);
+      
+      // Remove from local state
+      setMenuItems(prev => prev.filter(item => item.id !== itemId));
+      
+      toast({
+        title: "Menu item deleted",
+        description: "Item has been removed from the menu",
+      });
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete menu item",
+        variant: "destructive"
+      });
+    } finally {
+      setShowDeleteConfirm(null);
+    }
+  };
+
+  const toggleMenuItemAvailability = async (item: MenuItem) => {
+    try {
+      const updatedItem = await MenuService.updateMenuItem(item.id, {
+        isAvailable: !item.isAvailable
+      });
+      
+      // Update local state
+      setMenuItems(prev => prev.map(menuItem => 
+        menuItem.id === item.id ? updatedItem : menuItem
+      ));
+      
+      toast({
+        title: "Availability updated",
+        description: `${updatedItem.name} is now ${updatedItem.isAvailable ? 'available' : 'unavailable'}`,
+      });
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      toast({
+        title: "Update failed",
+        description: "Failed to update item availability",
+        variant: "destructive"
+      });
+    }
+  };
+
   const getStatusBadgeVariant = (status: OrderData['status']) => {
     switch (status) {
       case 'PENDING': return 'secondary';
@@ -237,6 +317,7 @@ const AdminDashboard = () => {
   }
 
   const stats = getDashboardStats();
+  const categories = Array.from(new Set(menuItems.map(item => item.category).filter(Boolean)));
 
   return (
     <div className="min-h-screen bg-muted">
@@ -249,6 +330,7 @@ const AdminDashboard = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <Button 
               variant="ghost" 
               onClick={() => navigate("/")}
@@ -330,9 +412,10 @@ const AdminDashboard = () => {
 
         {/* Main Content */}
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="orders">Orders</TabsTrigger>
             <TabsTrigger value="menu">Menu Management</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" className="space-y-4">
@@ -510,7 +593,7 @@ const AdminDashboard = () => {
                   )}
                   Refresh
                 </Button>
-                <Button>
+                <Button onClick={() => setShowMenuForm(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Item
                 </Button>
@@ -561,24 +644,107 @@ const AdminDashboard = () => {
                     </CardHeader>
 
                     <CardContent className="pt-0">
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="flex-1">
+                      <div className="flex gap-2 mb-3">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => handleMenuEdit(item)}
+                        >
                           <Edit3 className="h-4 w-4 mr-2" />
                           Edit
                         </Button>
-                        <Button size="sm" variant="outline" className="flex-1">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => setShowDeleteConfirm(item.id)}
+                        >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </Button>
                       </div>
+                      
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => toggleMenuItemAvailability(item)}
+                      >
+                        {item.isAvailable ? (
+                          <>
+                            <EyeOff className="h-4 w-4 mr-2" />
+                            Hide Item
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-4 w-4 mr-2" />
+                            Show Item
+                          </>
+                        )}
+                      </Button>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <AnalyticsDashboard 
+              orders={orders}
+              menuItems={menuItems}
+              onRefresh={fetchDashboardData}
+            />
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Menu Item Form Dialog */}
+      <Dialog open={showMenuForm} onOpenChange={setShowMenuForm}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingItem ? 'Edit Menu Item' : 'Add New Menu Item'}
+            </DialogTitle>
+          </DialogHeader>
+          <MenuItemForm
+            item={editingItem}
+            onSave={handleMenuSave}
+            onCancel={() => {
+              setShowMenuForm(false);
+              setEditingItem(null);
+            }}
+            categories={categories}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!showDeleteConfirm} onOpenChange={() => setShowDeleteConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Menu Item</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Are you sure you want to delete this menu item? This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <Button
+                variant="destructive"
+                onClick={() => showDeleteConfirm && handleMenuDelete(showDeleteConfirm)}
+              >
+                Delete
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(null)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

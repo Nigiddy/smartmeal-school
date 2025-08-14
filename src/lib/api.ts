@@ -238,6 +238,61 @@ export class MenuService {
       throw error;
     }
   }
+
+  static async createMenuItem(itemData: {
+    name: string;
+    description?: string;
+    price: number;
+    category: string;
+    image?: string;
+    isAvailable: boolean;
+  }): Promise<MenuItem> {
+    try {
+      const response = await httpClient.post<ApiResponse<MenuItem>>('/admin/menu', itemData);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to create menu item', 500);
+    } catch (error) {
+      console.error('Error creating menu item:', error);
+      throw error;
+    }
+  }
+
+  static async updateMenuItem(
+    id: string, 
+    itemData: Partial<{
+      name: string;
+      description: string;
+      price: number;
+      category: string;
+      image: string;
+      isAvailable: boolean;
+    }>
+  ): Promise<MenuItem> {
+    try {
+      const response = await httpClient.put<ApiResponse<MenuItem>>(`/admin/menu/${id}`, itemData);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      throw new ApiError(response.error || 'Failed to update menu item', 500);
+    } catch (error) {
+      console.error('Error updating menu item:', error);
+      throw error;
+    }
+  }
+
+  static async deleteMenuItem(id: string): Promise<void> {
+    try {
+      const response = await httpClient.delete<ApiResponse<void>>(`/admin/menu/${id}`);
+      if (!response.success) {
+        throw new ApiError(response.error || 'Failed to delete menu item', 500);
+      }
+    } catch (error) {
+      console.error('Error deleting menu item:', error);
+      throw error;
+    }
+  }
 }
 
 // Order Service
@@ -489,5 +544,4 @@ export const apiUtils = {
   }
 };
 
-// Export all services
-export { MenuService, OrdersService, MpesaService, AuthService };
+// All services are exported inline with their class definitions above
